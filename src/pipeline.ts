@@ -12,6 +12,7 @@ import { runCodeFacts } from './codefacts/verify.js';
 import { synthesize } from './synthesize/index.js';
 import { renderDashboard, type RenderData } from './render/html.js';
 import { estimateTokens } from './util.js';
+import { detectPatterns } from './patterns/registry.js';
 
 export interface RunResult {
   htmlPath: string;
@@ -69,6 +70,22 @@ export async function run(cfg: Config, log: (s: string) => void): Promise<RunRes
     files.some((f) => f.hash === e.content_hash),
   );
 
+  log(pc.dim('Detecting spec-driven-development patterns...'));
+  const patterns = detectPatterns(cfg.root);
+  if (patterns.length) {
+    log(`  ${patterns.map((p) => `${p.name} (${p.overallPercentComplete}% complete)`).join(', ')}`);
+    // Apply deterministic doc_type hints from recognized artifacts.
+    const hints: Record<string, string> = {};
+    for (const p of patterns) Object.assign(hints, p.typeHints);
+    for (const ex of extractions) {
+      const hint = hints[ex.file];
+      if (hint) ex.doc_type = hint;
+    }
+    store.writeJson('synth/patterns.json', patterns);
+  } else {
+    log(pc.dim('  none detected (free-form markdown corpus).'));
+  }
+
   log(pc.dim('Verifying features against current code (CodeFacts)...'));
   const codeFacts = runCodeFacts(cfg.root, extractions, grounding, store);
   log(`  inventory: ${codeFacts.inventoryPaths} paths, ${codeFacts.inventoryIdentifiers} identifiers.`);
@@ -94,6 +111,7 @@ export async function run(cfg: Config, log: (s: string) => void): Promise<RunRes
     synthesis,
     extractions,
     codeFacts,
+    patterns,
     runStamp: new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC',
     stats,
   });

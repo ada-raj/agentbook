@@ -5,6 +5,7 @@ import { escapeHtml } from '../util.js';
 import type { Synthesis, Feature, FeatureBadge } from '../synthesize/types.js';
 import type { ExtractionRecord, Grounding } from '../extract/schema.js';
 import type { CodeFacts } from '../codefacts/verify.js';
+import type { PatternDetection } from '../patterns/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -14,6 +15,7 @@ export interface RenderData {
   synthesis: Synthesis;
   extractions: ExtractionRecord[];
   codeFacts: CodeFacts;
+  patterns: PatternDetection[];
   runStamp: string;
   stats: {
     files: number;
@@ -78,6 +80,7 @@ export function renderDashboard(data: RenderData): string {
   <button data-tab="overview" class="active">Overview</button>
   <button data-tab="timeline">Timeline</button>
   <button data-tab="features">Feature Map</button>
+  ${data.patterns.length ? '<button data-tab="coverage">Spec Coverage</button>' : ''}
   <button data-tab="results">Results</button>
   <button data-tab="architecture">Architecture</button>
   <button data-tab="loops">Open Loops</button>
@@ -88,6 +91,7 @@ export function renderDashboard(data: RenderData): string {
   <section id="overview" class="tab active"></section>
   <section id="timeline" class="tab"></section>
   <section id="features" class="tab"></section>
+  <section id="coverage" class="tab"></section>
   <section id="results" class="tab"></section>
   <section id="architecture" class="tab"></section>
   <section id="loops" class="tab"></section>
@@ -121,6 +125,7 @@ function buildPayload(data: RenderData) {
     project: data.projectName,
     grounding: data.grounding,
     synthesis: data.synthesis,
+    patterns: data.patterns,
     files,
     codeFacts: {
       head: data.codeFacts.head,
@@ -219,6 +224,9 @@ function renderOverview(){
   ].map(([l,n])=>'<div class="card"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>').join('');
   let html='<div class="cards">'+cards+'</div>';
   html+='<div class="panel"><h2>Latest digest</h2>'+(syn.digest.length?('<ul>'+syn.digest.map(d=>'<li>'+esc(d.text)+'</li>').join('')+'</ul>'):'<div class="empty">No digest yet.</div>')+'</div>';
+  if(DATA.patterns && DATA.patterns.length){
+    html+='<div class="panel"><h2>Spec-driven coverage</h2>'+DATA.patterns.map(p=>'<div class="feat"><div class="top"><span class="name">'+esc(p.name)+'</span><span class="badge b-info">'+p.overallPercentComplete+'% complete</span></div><div class="meta">'+(p.features?p.features.length:0)+' features · '+(p.artifacts?p.artifacts.length:0)+' typed artifacts</div></div>').join('')+'<div class="pill">Full breakdown in the Spec Coverage tab.</div></div>';
+  }
   if(DATA.grounding.domain_glossary && DATA.grounding.domain_glossary.length){
     html+='<div class="panel"><h2>Domain glossary</h2><table><tbody>'+DATA.grounding.domain_glossary.slice(0,40).map(g=>'<tr><td class="mono">'+esc(g.term)+'</td><td>'+esc(g.meaning)+'</td></tr>').join('')+'</tbody></table></div>';
   }
@@ -347,8 +355,39 @@ function renderFiles(){
   document.getElementById('files').innerHTML=html;
 }
 
+// ---- Spec Coverage (pattern adapters) ----
+function pctBar(pct){
+  const col = pct>=80?'var(--ok)':pct>=40?'var(--plan)':'var(--warn)';
+  return '<div style="background:var(--border);border-radius:6px;height:8px;overflow:hidden;min-width:120px"><div style="height:100%;width:'+pct+'%;background:'+col+'"></div></div>';
+}
+function renderCoverage(){
+  const pats=DATA.patterns||[];
+  if(!pats.length){ document.getElementById('coverage').innerHTML='<div class="empty">No spec-driven-development pattern detected.</div>'; return; }
+  let html='';
+  for(const p of pats){
+    html+='<div class="panel"><h2>'+esc(p.name)+' <span class="badge b-info">'+p.overallPercentComplete+'% complete</span></h2>';
+    html+='<div class="meta pill">detected via '+p.markers.slice(0,4).map(esc).map(m=>'<span class="mono">'+m+'</span>').join(', ')+'</div>';
+    if(p.notes && p.notes.length) html+='<ul>'+p.notes.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul>';
+    if(p.features && p.features.length){
+      html+='<table><thead><tr><th>Feature</th><th>Stages</th><th>Tasks</th><th>Requirements</th><th>Tests</th><th>Complete</th></tr></thead><tbody>';
+      for(const f of p.features){
+        const stages=Object.keys(f.stages||{}).map(k=>'<span class="badge '+(f.stages[k]?'b-ok':'b-muted')+'" style="margin:1px">'+esc(k)+'</span>').join(' ');
+        const trace=f.requirementCount?(' ('+f.tracedRequirements+'/'+f.requirementCount+' traced)'):'';
+        html+='<tr><td class="mono">'+esc(f.name)+'</td><td>'+stages+'</td><td>'+(f.tasks?f.tasks.done+'/'+f.tasks.total:'—')+'</td><td>'+(f.requirementCount||'—')+esc(trace)+'</td><td>'+(f.hasTests?'✓':'—')+'</td><td style="display:flex;gap:8px;align-items:center">'+pctBar(f.percentComplete)+'<span class="mono">'+f.percentComplete+'%</span></td></tr>';
+      }
+      html+='</tbody></table>';
+    }
+    if(p.artifacts && p.artifacts.length){
+      html+='<h3>Typed artifacts ('+p.artifacts.length+')</h3><table><thead><tr><th>Type</th><th>Feature</th><th>File</th></tr></thead><tbody>'+
+        p.artifacts.slice(0,200).map(a=>'<tr><td><span class="badge b-muted">'+esc(a.artifactType)+'</span></td><td>'+esc(a.feature||'')+'</td><td class="mono">'+srcLink({file:a.path})+'</td></tr>').join('')+'</tbody></table>';
+    }
+    html+='</div>';
+  }
+  document.getElementById('coverage').innerHTML=html;
+}
+
 // ---- Tabs ----
-const renderers={overview:renderOverview,timeline:renderTimeline,features:renderFeatures,results:renderResults,architecture:renderArchitecture,loops:renderLoops,files:renderFiles};
+const renderers={overview:renderOverview,timeline:renderTimeline,features:renderFeatures,coverage:renderCoverage,results:renderResults,architecture:renderArchitecture,loops:renderLoops,files:renderFiles};
 const rendered={};
 function activate(tab){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
