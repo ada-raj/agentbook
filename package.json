@@ -1,0 +1,33 @@
+{
+  "name": "mdpulse",
+  "version": "1.0.0",
+  "description": "Reads your repo's markdown corpus and renders a verified project dashboard, on your Claude Code subscription.",
+  "type": "module",
+  "bin": {
+    "mdpulse": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "dev": "tsx src/cli.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["claude", "markdown", "dashboard", "cli", "claude-code"],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.mdpulse/
+*.log
+.DS_Store
+
+# vendored at build time, not committed
+src/render/assets/mermaid.min.js
