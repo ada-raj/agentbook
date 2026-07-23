@@ -1,11 +1,11 @@
 import type { PatternAdapter, PatternDetection } from './types.js';
+import { kiroAdapter } from './adapters/kiro.js';
 
 // The set of pattern adapters mdpulse knows about. Each spec-driven-development
-// convention is added here by its own branch; on its own this list is empty and
-// pattern detection is a no-op (repos with no recognized convention are
-// unaffected).
+// convention is added here by its own branch; repos with no recognized
+// convention are unaffected.
 export const ADAPTERS: PatternAdapter[] = [
-  // registered by pattern branches, e.g. specKitAdapter, kiroAdapter, ...
+  kiroAdapter,
 ];
 
 // Run every adapter against the repo root and return the patterns that matched.
