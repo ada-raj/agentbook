@@ -85,10 +85,16 @@ export const agentsMdAdapter: PatternAdapter = {
     const topDirs = topLevelDirs(root);
     const scopesWithConfig = new Set(configs.map((c) => c.scope));
     const coveredTop = topDirs.filter((d) => scopesWithConfig.has(d));
-    const coverage = topDirs.length
-      ? Math.round((coveredTop.length / topDirs.length) * 100)
-      : hasRoot
-        ? 100
+    // Headline = agent-guidance *availability*. Root guidance applies
+    // repo-wide, so a repo with a root AGENTS.md/CLAUDE.md is fully covered
+    // even if no submodule has its own file (reporting 0% there would be
+    // misleading). Without root guidance, coverage is the share of top-level
+    // modules that carry their own scoped guidance. The scoped share is always
+    // preserved as a note for granularity.
+    const coverage = hasRoot
+      ? 100
+      : topDirs.length
+        ? Math.round((coveredTop.length / topDirs.length) * 100)
         : 0;
 
     const notes = buildNotes(configs, hasRoot, topDirs.length, coveredTop.length);

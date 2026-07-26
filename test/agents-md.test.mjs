@@ -29,10 +29,11 @@ ok('root scope has both AGENTS and CLAUDE', rootScope.stages.AGENTS && rootScope
 ok('backend scope present', d.features.some((f) => f.name === 'backend'));
 ok('frontend scope present', d.features.some((f) => f.name === 'frontend'));
 
-// backend + frontend have own guidance, infra does not -> 2/3 = 67
-eq('scoped coverage 2/3 = 67%', d.overallPercentComplete, 67);
+// Root guidance present -> repo-wide availability = 100%; scoped depth (2/3)
+// is preserved as a note rather than the headline.
+eq('availability 100% (root guidance present)', d.overallPercentComplete, 100);
 ok('notes flag AGENTS/CLAUDE duplication at root', d.notes.some((n) => /both AGENTS.md and CLAUDE.md/.test(n)));
-ok('notes report module coverage', d.notes.some((n) => /2\/3 top-level module/.test(n)));
+ok('notes report scoped module coverage 2/3', d.notes.some((n) => /2\/3 top-level module/.test(n)));
 
 ok('returns null for a dir with no agent configs', agentsMdAdapter.detect(join(root, 'infra')) === null);
 
