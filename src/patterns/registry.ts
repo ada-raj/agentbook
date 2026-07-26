@@ -1,10 +1,12 @@
 import type { PatternAdapter, PatternDetection } from './types.js';
+import { specKitAdapter } from './adapters/specKit.js';
 import { kiroAdapter } from './adapters/kiro.js';
 
 // The set of pattern adapters mdpulse knows about. Each spec-driven-development
 // convention is added here by its own branch; repos with no recognized
 // convention are unaffected.
 export const ADAPTERS: PatternAdapter[] = [
+  specKitAdapter,
   kiroAdapter,
 ];
 
