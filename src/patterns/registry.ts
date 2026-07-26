@@ -1,6 +1,7 @@
 import type { PatternAdapter, PatternDetection } from './types.js';
 import { specKitAdapter } from './adapters/specKit.js';
 import { kiroAdapter } from './adapters/kiro.js';
+import { openspecAdapter } from './adapters/openspec.js';
 
 // The set of pattern adapters mdpulse knows about. Each spec-driven-development
 // convention is added here by its own branch; repos with no recognized
@@ -8,6 +9,7 @@ import { kiroAdapter } from './adapters/kiro.js';
 export const ADAPTERS: PatternAdapter[] = [
   specKitAdapter,
   kiroAdapter,
+  openspecAdapter,
 ];
 
 // Run every adapter against the repo root and return the patterns that matched.
